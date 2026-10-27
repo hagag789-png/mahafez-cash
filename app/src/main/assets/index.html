@@ -159,9 +159,41 @@ mark{background:transparent;color:var(--accent);font-weight:700}
 .toast{position:fixed;bottom:calc(88px + env(safe-area-inset-bottom,0px));right:50%;transform:translateX(50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:999px;font-size:13px;z-index:30;box-shadow:0 6px 16px rgba(0,0,0,.2)}
 .ro{font-size:12px;color:var(--warn);text-align:center}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .22s ease-out}@keyframes up{from{transform:translateY(30px);opacity:0}}}
+.hbtns{display:flex;gap:6px}
+.ibtn{width:34px;height:34px;padding:0;display:grid;place-items:center;border-radius:10px;font-size:16px}
+.seg3{display:flex;gap:4px;background:var(--soft);border-radius:10px;padding:3px}
+.seg3 button{flex:1;border:0;background:transparent;border-radius:8px;padding:8px;font-size:13px;font-weight:600}
+.seg3 button[aria-selected="true"]{background:var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+/* statement */
+body.st-open .wrap,body.st-open .fab{display:none}
+#stmt{position:fixed;inset:0;z-index:40;background:var(--bg);overflow:auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 24px}
+#stmt .top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;position:sticky;top:0;background:var(--bg);padding-block:4px;z-index:1}
+#stmt .top .acts{display:flex;gap:6px}
+.st{max-width:720px;margin:0 auto;display:grid;gap:14px}
+.st .head{display:grid;gap:2px;border-bottom:2px solid var(--fg);padding-bottom:10px}
+.st .head h2{color:var(--fg);font-size:20px}
+.st .sum{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.st .sum>div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.st .sum .num{font-size:16px}.st .sum .lbl{font-size:11px;color:var(--muted)}
+.st table{width:100%;border-collapse:collapse;font-size:12px}
+.st th,.st td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:right;vertical-align:top}
+.st th{font-size:11px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--fg)}
+.st td.n,.st th.n{text-align:left;white-space:nowrap}
+.st tr.day td{background:var(--soft);font-weight:700;font-size:11px;color:var(--muted)}
+.st .foot{font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.st .tw{overflow-x:auto}
+@media print{
+  @page{margin:12mm}
+  :root,:root[data-theme="dark"]{--bg:#fff;--surface:#fff;--fg:#000;--muted:#555;--line:#ccc;--soft:#f3f3f3;--accent:#0f5e4a;--good:#1e7a3a;--bad:#b4231b}
+  body{background:#fff!important;color:#000!important;padding:0!important}
+  .wrap,.fab,#sheetHost,#toastHost,#stmt .top{display:none!important}
+  #stmt{position:static;overflow:visible;padding:0;background:#fff;color:#000}
+  .st .sum div,.st tr.day td{border-color:#ccc;background:#f3f3f3!important;color:#000}
+  .st th,.st td{border-color:#ccc}
+}
 </style></head><body>
 <div class="wrap">
-  <div class="lhead" style="margin:0"><h1>محافظي كاش</h1><button class="mini" id="backup">☁ نسخة احتياطية</button></div>
+  <div class="lhead" style="margin:0"><h1>محافظي كاش</h1><div class="hbtns"><button class="ibtn" id="theme" aria-label="الوضع المظلم / المضيء" title="المظهر">◐</button><button class="ibtn" id="stmtBtn" aria-label="كشف حساب" title="كشف حساب">▤</button><button class="mini" id="backup">☁ نسخة احتياطية</button></div></div>
 
   <section class="hero">
     <div class="top">
@@ -220,6 +252,7 @@ mark{background:transparent;color:var(--accent);font-weight:700}
 <button class="fab" id="fab" aria-label="عملية جديدة">+</button>
 <div id="sheetHost"></div>
 <div id="toastHost"></div>
+<div id="stmt" hidden></div>
 
 <script>
 (function(){
@@ -554,6 +587,82 @@ function openBackupSheet(){
   s.querySelector('#no').onclick=closeSheet;
 }
 $('backup').onclick=openBackupSheet;
+
+/* ---------- theme ---------- */
+const THEMES=[['system','◐','يتبع إعدادات الهاتف'],['light','☀','الوضع المضيء'],['dark','☾','الوضع المظلم']];
+function applyTheme(t,quiet){
+  if(t==='system')delete document.documentElement.dataset.theme;else document.documentElement.dataset.theme=t;
+  const dark=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);
+  document.querySelector('meta[name=theme-color]').content=dark?'#15140f':'#0f5e4a';
+  const th=THEMES.find(x=>x[0]===t)||THEMES[0];$('theme').textContent=th[1];
+  if(window.Android&&Android.setBars)Android.setBars(dark?'#15140f':'#f6f4ef',!dark);
+  if(!quiet)toast(th[2]);
+}
+let theme='system';try{theme=localStorage.getItem('mahafez.theme')||'system'}catch(e){}
+applyTheme(theme,true);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>applyTheme(theme,true));
+$('theme').onclick=()=>{const i=THEMES.findIndex(x=>x[0]===theme);theme=THEMES[(i+1)%THEMES.length][0];try{localStorage.setItem('mahafez.theme',theme)}catch(e){}applyTheme(theme)};
+
+/* ---------- statement ---------- */
+const AR_MONTHS=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+const monthLabel=m=>AR_MONTHS[+m.slice(5,7)-1]+' '+m.slice(0,4);
+function openStatementSheet(){
+  const months=new Set([today().slice(0,7)]);txns.forEach(t=>t.day&&months.add(t.day.slice(0,7)));
+  const ms=[...months].sort().reverse();
+  let sel={wallet:filterWallet||'all',month:ms[0],period:'month'};
+  const s=sheet('<h3>كشف حساب</h3>'+
+    '<div class="field"><label>المحفظة</label><div class="wpick" id="swp"><button data-w="all" style="--pc:var(--fg)">كل المحافظ</button>'+wallets.map(w=>'<button data-w="'+w.id+'" style="--pc:'+(PROVIDERS[w.provider]||PROVIDERS.other).color+'">'+esc(w.name)+'</button>').join('')+'</div></div>'+
+    '<div class="field"><label>الفترة</label><div class="seg3" id="sper"><button data-p="month" aria-selected="true">شهر</button><button data-p="all" aria-selected="false">كل الفترة</button></div></div>'+
+    '<div class="field" id="smF"><label>الشهر</label><select id="sm">'+ms.map(m=>'<option value="'+m+'">'+monthLabel(m)+'</option>').join('')+'</select></div>'+
+    '<div class="sub">الكشف يعرض رصيد أول الفترة، كل العمليات بالرصيد الجاري، الإجماليات، وملخص الجهات. يمكن حفظه PDF أو مشاركته CSV.</div>'+
+    '<div class="actions"><button class="primary" id="go">عرض الكشف</button><button class="ghost" id="cancel">إلغاء</button></div>');
+  const sync=()=>{s.querySelectorAll('#swp button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.w===sel.wallet)));s.querySelectorAll('#sper button').forEach(x=>x.setAttribute('aria-selected',String(x.dataset.p===sel.period)));s.querySelector('#smF').hidden=sel.period!=='month'};
+  s.querySelectorAll('#swp button').forEach(x=>x.onclick=()=>{sel.wallet=x.dataset.w;sync()});
+  s.querySelectorAll('#sper button').forEach(x=>x.onclick=()=>{sel.period=x.dataset.p;sync()});
+  s.querySelector('#sm').onchange=e=>sel.month=e.target.value;
+  s.querySelector('#cancel').onclick=closeSheet;
+  s.querySelector('#go').onclick=()=>{closeSheet();showStatement(sel)};
+  sync();
+}
+function buildStatement(sel){
+  const ws=sel.wallet==='all'?wallets:wallets.filter(w=>w.id===sel.wallet);const ids=new Set(ws.map(w=>w.id));
+  const from=sel.period==='month'?sel.month+'-01':'0000',to=sel.period==='month'?sel.month+'-31':'9999';
+  const all=txns.filter(t=>ids.has(t.walletId)).sort((a,b)=>a.at<b.at?-1:a.at>b.at?1:0);
+  let open=ws.reduce((s,w)=>s+(+w.opening||0),0);
+  all.filter(t=>t.day<from).forEach(t=>open+=delta(t));
+  const rows=all.filter(t=>t.day>=from&&t.day<=to);
+  let run=open,tin=0,tout=0,fees=0;const parties={};
+  const lines=rows.map(t=>{const d=delta(t);run+=d;if(t.type==='in')tin+=+t.amount||0;else{tout+=+t.amount||0;fees+=+t.fee||0}
+    const k=norm(t.party);const o=parties[k]||(parties[k]={name:t.party,in:0,out:0,n:0});o.n++;if(t.type==='in')o.in+=+t.amount||0;else o.out+=(+t.amount||0)+(+t.fee||0);
+    return {...t,d,run}});
+  return {ws,open,close:run,tin,tout,fees,lines,parties:Object.values(parties).sort((a,b)=>(b.in+b.out)-(a.in+a.out)),
+    title:sel.wallet==='all'?'كل المحافظ':ws[0]?ws[0].name:'',period:sel.period==='month'?monthLabel(sel.month):'كل الفترة',from,to};
+}
+function showStatement(sel){
+  const S=buildStatement(sel);const el=$('stmt');
+  const wname=t=>{const w=wallets.find(x=>x.id===t.walletId);return w?w.name:''};
+  let body='',last=null;
+  S.lines.forEach(t=>{if(t.day!==last){last=t.day;body+='<tr class="day"><td colspan="5">'+dayLabel(t.day)+' · '+t.day+'</td></tr>'}
+    const tm=t.at?new Date(t.at).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}):'';
+    body+='<tr><td>'+esc(t.party)+(t.note?'<div class="sub">'+esc(t.note)+'</div>':'')+'</td><td>'+(sel.wallet==='all'?esc(wname(t))+'<br>':'')+'<span class="sub">'+tm+'</span></td><td class="n">'+(t.type==='in'?'<span class="pos">+'+fmt(t.amount)+'</span>':'')+'</td><td class="n">'+(t.type==='out'?'<span class="neg">−'+fmt(t.amount)+'</span>'+(+t.fee?'<div class="sub">رسوم '+fmt(+t.fee)+'</div>':''):'')+'</td><td class="n num">'+fmt(t.run)+'</td></tr>'});
+  if(!S.lines.length)body='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">لا توجد عمليات في هذه الفترة</td></tr>';
+  const prt=S.parties.slice(0,10).map(p=>'<tr><td>'+esc(p.name)+' <span class="sub">('+fmt0(p.n)+')</span></td><td class="n pos">'+(p.in?'+'+fmt(p.in):'')+'</td><td class="n neg">'+(p.out?'−'+fmt(p.out):'')+'</td><td class="n num">'+((p.in-p.out)>=0?'+':'−')+fmt(Math.abs(p.in-p.out))+'</td></tr>').join('');
+  el.innerHTML='<div class="top"><div class="acts"><button class="primary" id="stPdf">⬇ PDF</button><button id="stCsv">↗ CSV</button></div><button class="ghost" id="stClose">✕ إغلاق</button></div>'+
+   '<div class="st"><div class="head"><div class="eyebrow">محافظي كاش · كشف حساب</div><h2>'+esc(S.title)+'</h2><div class="sub">'+S.period+' · صدر في '+new Date().toLocaleDateString('ar-EG',{day:'numeric',month:'long',year:'numeric'})+(S.ws.length===1&&S.ws[0].phone?' · '+esc(S.ws[0].phone):'')+'</div></div>'+
+   '<div class="sum"><div><div class="num money">'+fmt(S.open)+'</div><div class="lbl">رصيد أول الفترة</div></div><div><div class="num money">'+fmt(S.close)+'</div><div class="lbl">رصيد آخر الفترة</div></div><div><div class="num money pos">+'+fmt(S.tin)+'</div><div class="lbl">إجمالي الإيداعات</div></div><div><div class="num money neg">−'+fmt(S.tout+S.fees)+'</div><div class="lbl">إجمالي المسحوبات'+(S.fees?' (منها رسوم '+fmt(S.fees)+')':'')+'</div></div></div>'+
+   '<div class="tw"><table><thead><tr><th>الجهة</th><th>'+(sel.wallet==='all'?'المحفظة / ':'')+'الوقت</th><th class="n">إيداع</th><th class="n">سحب</th><th class="n">الرصيد</th></tr></thead><tbody>'+body+'</tbody></table></div>'+
+   (S.parties.length?'<div><h2 style="margin-bottom:6px">ملخص الجهات</h2><div class="tw"><table><thead><tr><th>الجهة</th><th class="n">إيداع</th><th class="n">سحب</th><th class="n">الصافي</th></tr></thead><tbody>'+prt+'</tbody></table></div></div>':'')+
+   '<div class="foot"><span>'+fmt0(S.lines.length)+' عملية · صافي الفترة '+((S.close-S.open)>=0?'+':'−')+fmt(Math.abs(S.close-S.open))+'</span><span>الأرقام بالجنيه المصري كما سُجلت في التطبيق</span></div></div>';
+  el.hidden=false;document.body.classList.add('st-open');window.scrollTo(0,0);
+  el.querySelector('#stClose').onclick=()=>{el.hidden=true;el.innerHTML='';document.body.classList.remove('st-open')};
+  el.querySelector('#stPdf').onclick=()=>{if(window.Android&&Android.print)Android.print('كشف حساب '+S.title+' '+S.period);else window.print()};
+  el.querySelector('#stCsv').onclick=()=>{const r=[['التاريخ','الوقت','المحفظة','الجهة','إيداع','سحب','رسوم','الرصيد','ملاحظة']];
+    r.push([S.from,'','','رصيد أول الفترة','','','',S.open.toFixed(2),'']);
+    S.lines.forEach(t=>{const d=new Date(t.at);r.push([t.day,p2(d.getHours())+':'+p2(d.getMinutes()),wname(t),t.party,t.type==='in'?t.amount:'',t.type==='out'?t.amount:'',t.fee||'',t.run.toFixed(2),t.note||''])});
+    const csv='\ufeff'+r.map(x=>x.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+    shareFile('kashf-'+(sel.period==='month'?sel.month:'all')+'.csv',csv,'text/csv')};
+}
+$('stmtBtn').onclick=openStatementSheet;
 })();
 </script>
 <script>if(location.protocol.startsWith("http")&&"serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});</script>

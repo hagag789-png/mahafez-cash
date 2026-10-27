@@ -15,6 +15,11 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
+import android.graphics.Color;
+import android.print.PrintAttributes;
+import android.print.PrintManager;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
@@ -113,6 +118,36 @@ public class MainActivity extends AppCompatActivity {
             } catch (Exception e) {
                 return false;
             }
+        }
+
+        /** Print the current page: the system dialog offers "Save as PDF". */
+        @JavascriptInterface
+        public void print(String jobName) {
+            runOnUiThread(() -> {
+                try {
+                    PrintManager pm = (PrintManager) getSystemService(PRINT_SERVICE);
+                    pm.print(jobName, web.createPrintDocumentAdapter(jobName),
+                        new PrintAttributes.Builder().setMediaSize(PrintAttributes.MediaSize.ISO_A4).build());
+                } catch (Exception e) {
+                    Toast.makeText(MainActivity.this, "تعذّر فتح الطباعة", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        /** Match the status and navigation bars to the page's theme. */
+        @JavascriptInterface
+        public void setBars(String hex, boolean light) {
+            runOnUiThread(() -> {
+                try {
+                    int c = Color.parseColor(hex);
+                    getWindow().setStatusBarColor(c);
+                    getWindow().setNavigationBarColor(c);
+                    web.setBackgroundColor(c);
+                    WindowInsetsControllerCompat ic = WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+                    ic.setAppearanceLightStatusBars(light);
+                    ic.setAppearanceLightNavigationBars(light);
+                } catch (Exception ignored) {}
+            });
         }
 
         /** Share a text file through the system share sheet. */
