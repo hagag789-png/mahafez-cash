@@ -1,0 +1,557 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0f5e4a"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><title>محافظي كاش</title>
+<style>img{max-width:100%}[hidden]{display:none!important}body{margin:0}</style>
+<style>
+/* Layout: personal ledger. Total + 30-day trend on top, wallet tiles, search by party, insights, then a day-grouped ledger. Bottom sheet for entry. */
+:root{
+  --bg:#f6f4ef; --surface:#ffffff; --fg:#1c1a16; --muted:#6e675c; --line:#e3ded3; --soft:#efece4;
+  --accent:#0f5e4a; --accent-fg:#ffffff;
+  --good:#1e7a3a; --bad:#b4231b; --warn:#9a6a00;
+  --vf:#e60000; --et:#2d8f3c; --ah:#0b6b4f;
+  --display:system-ui,'Segoe UI',Roboto,sans-serif; --body:system-ui,'Segoe UI',Roboto,sans-serif;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#15140f; --surface:#1f1d17; --fg:#f1ede4; --muted:#a79e8f; --line:#332f27; --soft:#282520;
+  --accent:#4fb393; --accent-fg:#0f1f19; --good:#5dc77a; --bad:#f06a5f; --warn:#e3b341;
+  --vf:#ff4d4d; --et:#5dd16f; --ah:#3fc49b; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#15140f; --surface:#1f1d17; --fg:#f1ede4; --muted:#a79e8f; --line:#332f27; --soft:#282520;
+  --accent:#4fb393; --accent-fg:#0f1f19; --good:#5dc77a; --bad:#f06a5f; --warn:#e3b341;
+  --vf:#ff4d4d; --et:#5dd16f; --ah:#3fc49b; color-scheme:dark }
+
+*{box-sizing:border-box}
+html{direction:rtl}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 96px;
+  font-variant-numeric:tabular-nums}
+.wrap{max-width:720px;margin:0 auto;display:grid;gap:18px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;line-height:1.25}
+h1{font-size:22px;font-weight:800}
+h2{font-size:15px;font-weight:700;color:var(--muted)}
+.eyebrow{font-size:11px;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.num{font-family:var(--display);font-weight:800}
+.money{white-space:nowrap}
+.pos{color:var(--good)} .neg{color:var(--bad)}
+.sub{font-size:12px;color:var(--muted)}
+button{font:inherit;cursor:pointer;border-radius:12px;background:var(--surface);color:var(--fg);padding:10px 14px;border:1px solid var(--line)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);color:var(--accent-fg);border-color:transparent;font-weight:600}
+button.ghost{background:transparent}
+
+/* hero */
+.hero{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px 10px;display:grid;gap:8px}
+.hero .top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.hero .num.big{font-size:32px;line-height:1.1}
+.hero svg{width:100%;height:64px;display:block}
+.hero .mo{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border-top:1px solid var(--line);padding-top:8px}
+.hero .mo .num{font-size:16px}
+.hero .mo .lbl{font-size:11px;color:var(--muted)}
+
+/* wallet tiles */
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.tile{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 12px 10px 14px;text-align:right;display:grid;gap:3px;min-width:0;overflow:hidden}
+.tile::before{content:"";position:absolute;inset:0 auto 0 0;width:5px;background:var(--pc,var(--accent))}
+.tile .name{font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile .num{font-size:20px}
+.tile[aria-pressed="true"]{outline:2px solid var(--pc,var(--accent));outline-offset:-2px}
+.tile .gear{position:absolute;top:6px;left:10px;width:28px;height:28px;border-radius:8px;border:0;background:transparent;color:var(--muted);font-size:18px;line-height:1;padding:0;display:grid;place-items:center}
+.tile .gear:hover{background:var(--soft);color:var(--fg)}
+.mgr{display:grid;gap:8px}
+.mgr .wrow{display:grid;grid-template-columns:6px 1fr auto;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
+.mgr .wrow .bar2{width:6px;height:100%;min-height:36px;border-radius:3px;background:var(--pc,var(--accent))}
+.mgr .wrow .nm{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mgr .wrow .mt{font-size:12px;color:var(--muted)}
+.mgr .wrow .num{font-size:15px}
+.seg2{display:flex;gap:4px;background:var(--soft);border-radius:10px;padding:3px}
+.seg2 button{flex:1;border:0;background:transparent;border-radius:8px;padding:8px;font-size:13px;font-weight:600}
+.seg2 button[aria-selected="true"]{background:var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.stat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.stat .num{font-size:14px}.stat .lbl{font-size:11px;color:var(--muted)}
+.lhead .mini{padding:5px 10px;font-size:12px;border-radius:999px}
+.tile.add{display:grid;place-items:center;color:var(--muted);border-style:dashed;background:transparent;font-size:13px}
+.tile.add::before{display:none}
+
+/* search */
+.search{position:relative}
+.search input{font:inherit;width:100%;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:11px 42px 11px 40px;font-size:15px}
+.search .mag{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:16px;pointer-events:none}
+.search .clr{position:absolute;left:8px;top:50%;transform:translateY(-50%);border:0;background:var(--soft);width:26px;height:26px;border-radius:50%;padding:0;font-size:14px;line-height:1}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:8px 2px 2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips button{flex:none;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;background:var(--soft);border-color:transparent}
+.chips button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+
+/* party card */
+.party{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:grid;gap:8px}
+.party .head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.party .head h3{font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.party .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.party .grid .num{font-size:16px}
+.party .lbl{font-size:11px;color:var(--muted)}
+.bar{height:8px;border-radius:4px;background:var(--soft);overflow:hidden;display:flex}
+.bar i{display:block;height:100%}
+.bar .in{background:var(--good)} .bar .out{background:var(--bad)}
+
+/* insights */
+.ins{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:grid;gap:10px}
+.ins .seg{display:flex;gap:4px;background:var(--soft);border-radius:999px;padding:3px;width:max-content}
+.ins .seg button{border:0;background:transparent;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600}
+.ins .seg button[aria-selected="true"]{background:var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.rank{display:grid;gap:6px}
+.rank .it{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;font-size:13px}
+.rank .it .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.rank .it .ln{height:5px;border-radius:3px;background:var(--soft);margin-top:4px;overflow:hidden}
+.rank .it .ln i{display:block;height:100%;background:var(--accent)}
+.rank .it .ln i.o{background:var(--bad)}
+.rank .it .num{font-size:14px}
+
+/* ledger */
+.lhead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.lhead select{font:inherit;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:13px}
+.day{font-size:12px;color:var(--muted);padding:10px 2px 4px;display:flex;justify-content:space-between}
+.row{display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-top-width:0;padding:10px 12px;min-width:0;width:100%;text-align:right;border-radius:0}
+.day+.row{border-top-width:1px;border-radius:var(--r) var(--r) 0 0}
+.row.last{border-radius:0 0 var(--r) var(--r)}
+.day+.row.last{border-radius:var(--r)}
+.row .ic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-size:18px;background:var(--soft);font-family:var(--display);font-weight:800}
+.row.in .ic{color:var(--good)} .row.out .ic{color:var(--bad)}
+.row .t{min-width:0}
+.row .t .l1{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .t .l2{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .t .l2 b{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--pc);margin-left:4px;vertical-align:middle}
+.row .amt{text-align:left}
+.row .amt .num{font-size:16px}
+.row .amt .fee{font-size:11px;color:var(--muted)}
+mark{background:transparent;color:var(--accent);font-weight:700}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:var(--r);padding:28px 16px;text-align:center;color:var(--muted);font-size:14px}
+.empty b{display:block;color:var(--fg);font-family:var(--display);font-size:16px;margin-bottom:4px}
+
+/* FAB + sheet */
+.fab{position:fixed;bottom:calc(18px + env(safe-area-inset-bottom,0px));left:calc(18px + env(safe-area-inset-left,0px));width:58px;height:58px;border-radius:50%;background:var(--accent);color:var(--accent-fg);font-size:30px;line-height:1;display:grid;place-items:center;box-shadow:0 8px 20px rgba(0,0,0,.22);border:0;z-index:5}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--bg);width:100%;max-width:720px;border-radius:20px 20px 0 0;max-height:92vh;overflow:auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px calc(20px + env(safe-area-inset-bottom,0px));display:grid;gap:12px}
+.sheet .grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 4px}
+.sheet h3{font-size:18px}
+.field{display:grid;gap:4px}
+.field label{font-size:12px;color:var(--muted);font-weight:600}
+.field label .req{color:var(--bad)}
+.field input,.field select{font:inherit;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;font-size:16px}
+.field input[type=number]{font-family:var(--display);font-weight:700;font-size:24px}
+.field input.bad{border-color:var(--bad)}
+.err{font-size:12px;color:var(--bad)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.types{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.types button{padding:12px;font-size:15px;font-weight:700;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:8px}
+.types button[aria-pressed="true"].tin{background:var(--good);color:#fff;border-color:transparent}
+.types button[aria-pressed="true"].tout{background:var(--bad);color:#fff;border-color:transparent}
+.sugg{display:flex;flex-wrap:wrap;gap:6px}
+.sugg button{padding:5px 10px;font-size:12px;border-radius:999px;background:var(--soft);border-color:transparent}
+.hint{font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px;display:flex;justify-content:space-between;gap:8px}
+.actions{display:flex;gap:8px}
+.actions .primary{flex:1}
+.danger{color:var(--bad)}
+.wpick{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.wpick button{flex:none;font-size:13px;font-weight:600;border-radius:999px;padding:7px 12px;border-right:4px solid var(--pc,var(--accent))}
+.wpick button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.toast{position:fixed;bottom:calc(88px + env(safe-area-inset-bottom,0px));right:50%;transform:translateX(50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:999px;font-size:13px;z-index:30;box-shadow:0 6px 16px rgba(0,0,0,.2)}
+.ro{font-size:12px;color:var(--warn);text-align:center}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:up .22s ease-out}@keyframes up{from{transform:translateY(30px);opacity:0}}}
+</style></head><body>
+<div class="wrap">
+  <div class="lhead" style="margin:0"><h1>محافظي كاش</h1><button class="mini" id="backup">☁ نسخة احتياطية</button></div>
+
+  <section class="hero">
+    <div class="top">
+      <div>
+        <div class="eyebrow">إجمالي الرصيد</div>
+        <div class="num big money" id="total">—</div>
+        <div class="sub" id="asOf">جاري التحميل…</div>
+      </div>
+      <div class="sub" id="trendLbl" style="text-align:left">آخر 30 يوم</div>
+    </div>
+    <svg id="trend" viewBox="0 0 320 64" preserveAspectRatio="none" aria-hidden="true"></svg>
+    <div class="mo">
+      <div><div class="num money pos" id="mIn">0</div><div class="lbl">إيداعات الشهر</div></div>
+      <div><div class="num money neg" id="mOut">0</div><div class="lbl">مسحوبات الشهر</div></div>
+      <div><div class="num money" id="mNet">0</div><div class="lbl">صافي الشهر</div></div>
+    </div>
+  </section>
+
+  <div class="ro" id="ro" hidden>وضع القراءة فقط: الصفحة تعرض البيانات بدون تعديل.</div>
+
+  <section>
+    <div class="lhead"><h2>المحافظ</h2><button class="mini" id="manage" hidden>⚙ إدارة المحافظ</button></div>
+    <div class="tiles" id="tiles"></div>
+  </section>
+
+  <section>
+    <div class="search">
+      <span class="mag">⌕</span>
+      <input type="search" id="q" placeholder="ابحث باسم الجهة…" autocomplete="off" aria-label="بحث بالجهة">
+      <button class="clr" id="qclr" aria-label="مسح البحث" hidden>×</button>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div id="partyCard"></div>
+  </section>
+
+  <section class="ins" id="ins">
+    <div class="lhead" style="margin:0"><h2>أكثر الجهات تعاملًا</h2>
+      <div class="seg" role="tablist"><button role="tab" aria-selected="true" data-p="month">هذا الشهر</button><button role="tab" aria-selected="false" data-p="all">الكل</button></div></div>
+    <div class="rank" id="rank"></div>
+  </section>
+
+  <section>
+    <div class="lhead">
+      <h2 id="ltitle">سجل العمليات</h2>
+      <select id="range" aria-label="الفترة">
+        <option value="today">اليوم</option>
+        <option value="week">آخر 7 أيام</option>
+        <option value="month" selected>هذا الشهر</option>
+        <option value="all">الكل</option>
+      </select>
+    </div>
+    <div id="list"></div>
+  </section>
+</div>
+
+<button class="fab" id="fab" aria-label="عملية جديدة">+</button>
+<div id="sheetHost"></div>
+<div id="toastHost"></div>
+
+<script>
+(function(){
+'use strict';
+const PROVIDERS={
+  vodafone:{name:'فودافون كاش',color:'var(--vf)'},
+  etisalat:{name:'اتصالات كاش',color:'var(--et)'},
+  ahly:{name:'الأهلي فون كاش',color:'var(--ah)'},
+  other:{name:'محفظة أخرى',color:'var(--accent)'}
+};
+const TYPES={in:{label:'إيداع',ic:'+',party:'جهة الإيداع'},out:{label:'سحب',ic:'−',party:'جهة الصرف'}};
+const fmt=n=>new Intl.NumberFormat('en-EG',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n||0)+' ج.م';
+const fmt0=n=>new Intl.NumberFormat('en-EG',{maximumFractionDigits:0}).format(n||0);
+const p2=n=>String(n).padStart(2,'0');
+const dayOf=d=>{const x=new Date(d);return x.getFullYear()+'-'+p2(x.getMonth()+1)+'-'+p2(x.getDate())};
+const today=()=>dayOf(new Date());
+const $=id=>document.getElementById(id);
+const norm=s=>String(s||'').trim().replace(/\s+/g,' ').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').toLowerCase();
+let store=null, canWrite=true, wallets=[], txns=[];
+let filterWallet=null, q='', rankPeriod='month';
+
+/* ---------- derived ---------- */
+function delta(t){const a=+t.amount||0,f=+t.fee||0;return t.type==='in'?a:-(a+f)}
+function balances(){const b={};wallets.forEach(w=>b[w.id]=+w.opening||0);txns.forEach(t=>{if(b[t.walletId]!==undefined)b[t.walletId]+=delta(t)});return b}
+function matchQ(t){if(!q)return true;const n=norm(q);return norm(t.party).includes(n)||norm(t.note).includes(n)}
+function visibleTxns(){
+  const r=$('range').value, now=new Date(); let from=null;
+  if(r==='today')from=today();
+  else if(r==='week'){const d=new Date(now);d.setDate(d.getDate()-6);from=dayOf(d)}
+  else if(r==='month')from=today().slice(0,8)+'01';
+  if(q)from=null; // a search spans the whole history
+  return txns.filter(t=>(!filterWallet||t.walletId===filterWallet)&&(!from||t.day>=from)&&matchQ(t));
+}
+function parties(){const m={};txns.forEach(t=>{const k=norm(t.party);if(!k)return;const o=m[k]||(m[k]={name:t.party,n:0,in:0,out:0,last:''});o.n++;if(t.type==='in')o.in+=+t.amount||0;else o.out+=(+t.amount||0)+(+t.fee||0);if(t.at>o.last){o.last=t.at;o.name=t.party}});return Object.values(m)}
+
+/* ---------- render ---------- */
+function render(){
+  const b=balances();
+  const total=wallets.reduce((s,w)=>s+(b[w.id]||0),0);
+  $('total').textContent=fmt(total);
+  $('asOf').textContent=store?'محدّث · '+new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}):'بدون اتصال بقاعدة البيانات';
+
+  // month
+  const mo=today().slice(0,7);const mt=txns.filter(t=>t.day&&t.day.startsWith(mo));
+  const mIn=mt.filter(t=>t.type==='in').reduce((s,t)=>s+(+t.amount||0),0), mOut=mt.filter(t=>t.type==='out').reduce((s,t)=>s+(+t.amount||0)+(+t.fee||0),0);
+  $('mIn').textContent=fmt(mIn);$('mOut').textContent=fmt(mOut);const net=$('mNet');net.textContent=(mIn-mOut>=0?'+':'−')+fmt(Math.abs(mIn-mOut));net.className='num money '+(mIn-mOut>=0?'pos':'neg');
+  drawTrend(total);
+
+  // tiles
+  const tiles=$('tiles');tiles.innerHTML='';
+  wallets.forEach(w=>{
+    const p=PROVIDERS[w.provider]||PROVIDERS.other;const bal=b[w.id]||0;
+    const el=document.createElement('button');el.className='tile';el.style.setProperty('--pc',p.color);el.setAttribute('aria-pressed',String(filterWallet===w.id));
+    const cnt=txns.filter(t=>t.walletId===w.id).length;
+    el.innerHTML='<div class="eyebrow">'+p.name+'</div><div class="name">'+esc(w.name)+(w.phone?' <span class="sub">'+esc(w.phone)+'</span>':'')+'</div><div class="num money'+(bal<0?' neg':'')+'">'+fmt(bal)+'</div><div class="sub">'+(cnt?fmt0(cnt)+' عملية':'رصيد أول المدة '+fmt(+w.opening||0))+'</div>';
+    el.onclick=()=>{filterWallet=filterWallet===w.id?null:w.id;render()};
+    if(canWrite){const g=document.createElement('span');g.className='gear';g.setAttribute('role','button');g.setAttribute('aria-label','إعدادات المحفظة');g.textContent='⋯';g.onclick=e=>{e.stopPropagation();openWalletSheet(w)};el.appendChild(g)}
+    tiles.appendChild(el);
+  });
+  if(canWrite){const add=document.createElement('button');add.className='tile add';add.textContent='+ إضافة محفظة';add.onclick=()=>openWalletSheet(null);tiles.appendChild(add)}
+  $('manage').hidden=!canWrite||!wallets.length;
+
+  // search + chips + party card
+  $('qclr').hidden=!q;
+  const ps=parties().sort((a,b)=>b.n-a.n);
+  const chips=$('chips');chips.innerHTML='';
+  ps.slice(0,12).forEach(p=>{const c=document.createElement('button');c.textContent=p.name;c.setAttribute('aria-pressed',String(norm(q)===norm(p.name)));c.onclick=()=>{q=norm(q)===norm(p.name)?'':p.name;$('q').value=q;render()};chips.appendChild(c)});
+  chips.hidden=!ps.length;
+  const pc=$('partyCard');pc.innerHTML='';
+  const exact=q?ps.find(p=>norm(p.name)===norm(q)):null;
+  if(exact){const tot=exact.in+exact.out;const net2=exact.in-exact.out;
+    pc.innerHTML='<div class="party"><div class="head"><h3>'+esc(exact.name)+'</h3><span class="sub">'+fmt0(exact.n)+' عملية · آخرها '+relDay(exact.last)+'</span></div>'+
+    '<div class="grid"><div><div class="num money pos">'+fmt(exact.in)+'</div><div class="lbl">أودعت منها</div></div><div><div class="num money neg">'+fmt(exact.out)+'</div><div class="lbl">صرفت لها</div></div><div><div class="num money '+(net2>=0?'pos':'neg')+'">'+(net2>=0?'+':'−')+fmt(Math.abs(net2))+'</div><div class="lbl">الصافي معها</div></div></div>'+
+    '<div class="bar"><i class="in" style="width:'+(tot?exact.in/tot*100:0)+'%"></i><i class="out" style="width:'+(tot?exact.out/tot*100:0)+'%"></i></div></div>'}
+
+  // rank
+  const rk=$('rank');rk.innerHTML='';
+  const rp=rankPeriod==='month'?txns.filter(t=>t.day&&t.day.startsWith(mo)):txns;
+  const rm={};rp.forEach(t=>{const k=norm(t.party);if(!k)return;const o=rm[k]||(rm[k]={name:t.party,in:0,out:0});if(t.type==='in')o.in+=+t.amount||0;else o.out+=(+t.amount||0)+(+t.fee||0)});
+  const rl=Object.values(rm).map(o=>({...o,tot:o.in+o.out})).sort((a,b)=>b.tot-a.tot).slice(0,5);
+  const mx=rl[0]?rl[0].tot:1;
+  document.querySelectorAll('#ins .seg button').forEach(x=>x.setAttribute('aria-selected',String(x.dataset.p===rankPeriod)));
+  if(!rl.length)rk.innerHTML='<div class="sub">لا توجد عمليات '+(rankPeriod==='month'?'هذا الشهر':'بعد')+'.</div>';
+  rl.forEach(o=>{const it=document.createElement('button');it.className='it';it.style.cssText='background:transparent;border:0;padding:0;text-align:right;width:100%';
+    it.innerHTML='<div style="min-width:0"><div class="nm">'+esc(o.name)+'</div><div class="ln"><i class="'+(o.out>o.in?'o':'')+'" style="width:'+(o.tot/mx*100)+'%"></i></div></div><div class="num money">'+fmt(o.tot)+'</div>';
+    it.onclick=()=>{q=o.name;$('q').value=q;render();$('q').scrollIntoView({block:'start',behavior:'smooth'})};rk.appendChild(it)});
+
+  // ledger
+  $('ltitle').textContent=q?'نتائج البحث':'سجل العمليات';$('range').hidden=!!q;
+  const list=$('list');list.innerHTML='';
+  const items=visibleTxns();
+  if(!items.length){list.innerHTML='<div class="empty"><b>'+(q?'لا توجد عمليات مع «'+esc(q)+'»':txns.length?'لا توجد عمليات في هذه الفترة':'السجل فارغ')+'</b>'+(wallets.length?(q?'جرّب اسمًا آخر أو امسح البحث':'اضغط + لتسجيل أول عملية'):'أضف محفظتك الأولى من الكروت بالأعلى')+'</div>';return}
+  const byDay={};items.forEach(t=>{byDay[t.day]=(byDay[t.day]||0)+delta(t)});
+  let lastDay=null;
+  items.forEach((t,i)=>{
+    if(t.day!==lastDay){lastDay=t.day;const d=document.createElement('div');d.className='day';const dn=byDay[t.day];
+      d.innerHTML='<span>'+dayLabel(t.day)+'</span><span class="'+(dn>=0?'pos':'neg')+'">'+(dn>=0?'+':'−')+fmt(Math.abs(dn))+'</span>';list.appendChild(d)}
+    const w=wallets.find(x=>x.id===t.walletId)||{name:'محفظة محذوفة'};const p=PROVIDERS[w.provider]||PROVIDERS.other;const T=TYPES[t.type]||TYPES.in;const d=delta(t);
+    const r=document.createElement('button');r.className='row '+t.type+((i===items.length-1||items[i+1].day!==t.day)?' last':'');r.style.setProperty('--pc',p.color);
+    const tm=t.at?new Date(t.at).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}):'';
+    r.innerHTML='<div class="ic">'+T.ic+'</div><div class="t"><div class="l1">'+hl(t.party)+'</div><div class="l2"><b></b>'+esc(w.name)+' · '+T.label+(t.note?' · '+hl(t.note):'')+(tm?' · '+tm:'')+'</div></div><div class="amt"><div class="num money '+(d>=0?'pos':'neg')+'">'+(d>=0?'+':'−')+fmt(Math.abs(d))+'</div>'+(+t.fee?'<div class="fee">شامل رسوم '+fmt(+t.fee)+'</div>':'')+'</div>';
+    if(canWrite)r.onclick=()=>openTxnSheet(t.type,t);
+    list.appendChild(r);
+  });
+}
+function hl(s){const e=esc(s);if(!q)return e;const n=norm(q);const ns=norm(s);const i=ns.indexOf(n);if(i<0||ns.length!==String(s||'').length)return e;return esc(String(s).slice(0,i))+'<mark>'+esc(String(s).slice(i,i+n.length))+'</mark>'+esc(String(s).slice(i+n.length))}
+function dayLabel(day){if(day===today())return 'اليوم';const y=new Date();y.setDate(y.getDate()-1);if(day===dayOf(y))return 'أمس';return new Date(day+'T00:00').toLocaleDateString('ar-EG',{weekday:'long',day:'numeric',month:'long'})}
+function relDay(at){if(!at)return '';const d=dayOf(at);return d===today()?'اليوم':new Date(d+'T00:00').toLocaleDateString('ar-EG',{day:'numeric',month:'short'})}
+function drawTrend(total){
+  const svg=$('trend');const days=[];const d0=new Date();d0.setDate(d0.getDate()-29);
+  for(let i=0;i<30;i++){const d=new Date(d0);d.setDate(d0.getDate()+i);days.push(dayOf(d))}
+  // walk backwards from today's total
+  const per={};txns.forEach(t=>{per[t.day]=(per[t.day]||0)+delta(t)});
+  const vals=new Array(30);let run=total;
+  for(let i=29;i>=0;i--){vals[i]=run;run-=per[days[i]]||0}
+  const future=txns.filter(t=>t.day>today()).reduce((s,t)=>s+delta(t),0);if(future)vals[29]-=future;
+  const mn=Math.min(...vals,0),mx=Math.max(...vals,1);const W=320,H=64,pad=6;
+  const x=i=>pad+i*(W-2*pad)/29, y=v=>H-pad-((v-mn)/((mx-mn)||1))*(H-2*pad);
+  let p='';vals.forEach((v,i)=>{p+=(i?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1)+' '});
+  const area=p+'L'+x(29).toFixed(1)+' '+(H-pad)+' L'+x(0).toFixed(1)+' '+(H-pad)+' Z';
+  const flat=txns.length===0;
+  svg.innerHTML='<path d="'+area+'" fill="var(--accent)" opacity="'+(flat?0.08:0.14)+'"/><path d="'+p+'" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/><circle cx="'+x(29).toFixed(1)+'" cy="'+y(vals[29]).toFixed(1)+'" r="3.5" fill="var(--accent)"/>';
+  $('trendLbl').textContent=flat?'لا يوجد سجل بعد':((vals[29]-vals[0])>=0?'▲ ':'▼ ')+fmt(Math.abs(vals[29]-vals[0]))+' خلال 30 يوم';
+}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+/* ---------- sheets ---------- */
+function sheet(html){const h=$('sheetHost');h.innerHTML='<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>'+html+'</div></div>';
+  $('scrim').addEventListener('click',e=>{if(e.target.id==='scrim')closeSheet()});return h.querySelector('.sheet')}
+function closeSheet(){$('sheetHost').innerHTML=''}
+function toast(msg){const h=$('toastHost');h.innerHTML='<div class="toast">'+esc(msg)+'</div>';setTimeout(()=>h.innerHTML='',2200)}
+
+function openTxnSheet(type,existing){
+  if(!canWrite)return;
+  if(!wallets.length){toast('أضف محفظة أولًا');return}
+  let cur=existing?{...existing}:{type:type||'out',walletId:filterWallet||wallets[0].id,amount:'',fee:'',party:'',note:'',at:new Date().toISOString()};
+  const b=balances();
+  const ps=parties().sort((a,b)=>b.last<a.last?-1:1);
+  const s=sheet(
+    '<h3>'+(existing?'تعديل عملية':'عملية جديدة')+'</h3>'+
+    '<div class="types"><button class="tin" data-k="in">＋ إيداع</button><button class="tout" data-k="out">－ سحب</button></div>'+
+    '<div class="wpick" id="wpick">'+wallets.map(w=>'<button data-w="'+w.id+'" style="--pc:'+(PROVIDERS[w.provider]||PROVIDERS.other).color+'">'+esc(w.name)+'</button>').join('')+'</div>'+
+    '<div class="field"><label>المبلغ (ج.م) <span class="req">*</span></label><input type="number" inputmode="decimal" step="0.01" min="0" id="amount" placeholder="0.00"></div>'+
+    '<div class="field"><label id="partyLbl"></label><input type="text" id="party" list="plist" placeholder="اكتب اسم الجهة…" autocomplete="off"><datalist id="plist">'+ps.map(p=>'<option value="'+esc(p.name)+'">').join('')+'</datalist><div class="err" id="partyErr" hidden>اكتب الجهة، هذا الحقل إجباري</div><div class="sugg" id="sugg"></div></div>'+
+    '<div class="grid2"><div class="field" id="feeF"><label>رسوم السحب (ج.م)</label><input type="number" inputmode="decimal" step="0.01" min="0" id="fee" placeholder="0"></div>'+
+    '<div class="field"><label>الوقت</label><input type="datetime-local" id="at"></div></div>'+
+    '<div class="field"><label>ملاحظة</label><input type="text" id="note" placeholder="اختياري"></div>'+
+    '<div class="hint"><span>الرصيد بعد العملية</span><b class="num" id="after">—</b></div>'+
+    '<div class="actions"><button class="primary" id="save">'+(existing?'حفظ التعديل':'تسجيل')+'</button>'+(existing?'<button class="ghost danger" id="del">حذف</button>':'')+'<button class="ghost" id="cancel">إلغاء</button></div>'
+  );
+  const loc=d=>{const x=new Date(d);return x.getFullYear()+'-'+p2(x.getMonth()+1)+'-'+p2(x.getDate())+'T'+p2(x.getHours())+':'+p2(x.getMinutes())};
+  s.querySelector('#at').value=loc(cur.at);
+  s.querySelector('#amount').value=cur.amount;s.querySelector('#fee').value=cur.fee||'';s.querySelector('#party').value=cur.party||'';s.querySelector('#note').value=cur.note||'';
+  const sugg=s.querySelector('#sugg');
+  const renderSugg=()=>{const v=norm(s.querySelector('#party').value);const pool=ps.filter(p=>!v||norm(p.name).includes(v)).slice(0,6);sugg.innerHTML='';pool.forEach(p=>{const c=document.createElement('button');c.type='button';c.textContent=p.name;c.onclick=()=>{s.querySelector('#party').value=p.name;s.querySelector('#party').classList.remove('bad');s.querySelector('#partyErr').hidden=true;renderSugg()};sugg.appendChild(c)})};
+  const sync=()=>{
+    s.querySelectorAll('.types button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.k===cur.type)));
+    s.querySelectorAll('#wpick button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.w===cur.walletId)));
+    s.querySelector('#partyLbl').innerHTML=TYPES[cur.type].party+' <span class="req">*</span>';
+    s.querySelector('#feeF').hidden=cur.type==='in';
+    const amt=+s.querySelector('#amount').value||0, fee=cur.type==='in'?0:(+s.querySelector('#fee').value||0);
+    const base=(b[cur.walletId]||0)-(existing?delta(existing):0);
+    const after=base+delta({type:cur.type,amount:amt,fee});
+    const a=s.querySelector('#after');a.textContent=fmt(after);a.className='num '+(after<0?'neg':'');
+  };
+  s.querySelectorAll('.types button').forEach(x=>x.onclick=()=>{cur.type=x.dataset.k;sync()});
+  s.querySelectorAll('#wpick button').forEach(x=>x.onclick=()=>{cur.walletId=x.dataset.w;sync()});
+  s.querySelector('#amount').oninput=s.querySelector('#fee').oninput=sync;
+  s.querySelector('#party').oninput=()=>{s.querySelector('#party').classList.remove('bad');s.querySelector('#partyErr').hidden=true;renderSugg()};
+  s.querySelector('#cancel').onclick=closeSheet;
+  s.querySelector('#save').onclick=async()=>{
+    const amt=+s.querySelector('#amount').value;const party=s.querySelector('#party').value.trim().replace(/\s+/g,' ');
+    if(!(amt>0)){s.querySelector('#amount').classList.add('bad');s.querySelector('#amount').focus();toast('اكتب المبلغ');return}
+    if(!party){s.querySelector('#party').classList.add('bad');s.querySelector('#partyErr').hidden=false;s.querySelector('#party').focus();return}
+    const at=new Date(s.querySelector('#at').value||Date.now());
+    const doc={walletId:cur.walletId,type:cur.type,amount:amt,fee:cur.type==='in'?0:(+s.querySelector('#fee').value||0),party,note:s.querySelector('#note').value.trim(),at:at.toISOString(),day:dayOf(at),updatedAt:new Date().toISOString()};
+    const btn=s.querySelector('#save');btn.disabled=true;
+    try{
+      if(existing){doc.createdAt=existing.createdAt||doc.updatedAt;await store.doc('txns/'+existing.id).set(doc)}else{doc.createdAt=doc.updatedAt;await store.collection('txns').add(doc)}
+      closeSheet();toast(existing?'تم الحفظ':(cur.type==='in'?'تم تسجيل الإيداع':'تم تسجيل السحب'));
+    }catch(e){btn.disabled=false;fail(e)}
+  };
+  const del=s.querySelector('#del');if(del)del.onclick=()=>confirmSheet('حذف هذه العملية؟','سيتم تعديل الرصيد تلقائيًا.',async()=>{try{await store.doc('txns/'+existing.id).delete();closeSheet();toast('تم الحذف')}catch(e){fail(e)}});
+  sync();renderSugg();setTimeout(()=>s.querySelector('#amount').focus(),50);
+}
+
+function openManageSheet(){
+  if(!canWrite)return;
+  const b=balances();
+  const s=sheet('<h3>إدارة المحافظ</h3><div class="sub">اضغط على محفظة لتعديل اسمها أو رصيد أول المدة أو حذفها.</div><div class="mgr" id="mgr"></div>'+
+    '<div class="actions"><button class="primary" id="addw">+ محفظة جديدة</button><button class="ghost" id="cancel">إغلاق</button></div>');
+  const m=s.querySelector('#mgr');
+  wallets.forEach(w=>{const p=PROVIDERS[w.provider]||PROVIDERS.other;const cnt=txns.filter(t=>t.walletId===w.id).length;const bal=b[w.id]||0;
+    const r=document.createElement('button');r.className='wrow';r.style.setProperty('--pc',p.color);r.style.textAlign='right';
+    r.innerHTML='<span class="bar2"></span><div style="min-width:0"><div class="nm">'+esc(w.name)+'</div><div class="mt">'+p.name+(w.phone?' · '+esc(w.phone):'')+' · '+fmt0(cnt)+' عملية · أول المدة '+fmt(+w.opening||0)+'</div></div><div class="num money'+(bal<0?' neg':'')+'">'+fmt(bal)+'</div>';
+    r.onclick=()=>openWalletSheet(w,true);m.appendChild(r)});
+  if(!wallets.length)m.innerHTML='<div class="sub">لا توجد محافظ بعد.</div>';
+  s.querySelector('#addw').onclick=()=>openWalletSheet(null,true);
+  s.querySelector('#cancel').onclick=closeSheet;
+}
+
+function openWalletSheet(w,fromMgr){
+  if(!canWrite)return;
+  const cur=w?{...w}:{name:'',provider:'vodafone',opening:'',phone:''};
+  const b=balances();const bal=w?(b[w.id]||0):0;const moves=w?bal-(+w.opening||0):0;
+  const wt=w?txns.filter(t=>t.walletId===w.id):[];
+  const cnt=wt.length, tin=wt.filter(t=>t.type==='in').reduce((s,t)=>s+(+t.amount||0),0), tout=wt.filter(t=>t.type==='out').reduce((s,t)=>s+(+t.amount||0)+(+t.fee||0),0);
+  let balMode='opening';
+  const s=sheet(
+    '<h3>'+(w?'إعدادات المحفظة':'محفظة جديدة')+'</h3>'+
+    (w?'<div class="stat"><div><div class="num money'+(bal<0?' neg':'')+'">'+fmt(bal)+'</div><div class="lbl">الرصيد الحالي</div></div><div><div class="num money pos">'+fmt(tin)+'</div><div class="lbl">إيداعات ('+fmt0(cnt)+' عملية)</div></div><div><div class="num money neg">'+fmt(tout)+'</div><div class="lbl">مسحوبات</div></div></div>':'')+
+    '<div class="field"><label>المزوّد</label><select id="provider">'+Object.keys(PROVIDERS).map(k=>'<option value="'+k+'">'+PROVIDERS[k].name+'</option>').join('')+'</select></div>'+
+    '<div class="grid2"><div class="field"><label>اسم المحفظة <span class="req">*</span></label><input type="text" id="name" placeholder="مثال: فودافون الخط الأساسي"></div>'+
+    '<div class="field"><label>رقم الخط</label><input type="tel" id="phone" placeholder="01xxxxxxxxx"></div></div>'+
+    '<div class="field"><label>ضبط الرصيد</label><div class="seg2" id="bmode"><button data-m="opening" aria-selected="true">رصيد أول المدة</button><button data-m="current" aria-selected="false">الرصيد الفعلي الآن</button></div></div>'+
+    '<div class="field"><label id="balLbl">رصيد أول المدة (ج.م)</label><input type="number" inputmode="decimal" step="0.01" id="opening" placeholder="0.00"><div class="sub" id="balHint"></div></div>'+
+    '<div class="hint"><span>الرصيد بعد الحفظ</span><b class="num" id="after">—</b></div>'+
+    '<div class="actions"><button class="primary" id="save">'+(w?'حفظ':'إضافة')+'</button>'+(w?'<button class="ghost danger" id="del">حذف</button>':'')+'<button class="ghost" id="cancel">'+(fromMgr?'رجوع':'إلغاء')+'</button></div>'
+  );
+  ['provider','name','phone','opening'].forEach(k=>s.querySelector('#'+k).value=cur[k]==null?'':cur[k]);
+  if(!w)s.querySelector('#name').value=PROVIDERS[cur.provider].name;
+  s.querySelector('#provider').onchange=e=>{const n=s.querySelector('#name');if(!n.value.trim()||Object.values(PROVIDERS).some(p=>p.name===n.value))n.value=PROVIDERS[e.target.value].name};
+  const openingOf=()=>{const v=+s.querySelector('#opening').value||0;return balMode==='current'?+(v-moves).toFixed(2):v};
+  const sync=()=>{
+    s.querySelectorAll('#bmode button').forEach(x=>x.setAttribute('aria-selected',String(x.dataset.m===balMode)));
+    s.querySelector('#balLbl').textContent=balMode==='current'?'الرصيد كما يظهر في تطبيق المحفظة الآن (ج.م)':'رصيد أول المدة (ج.م)';
+    s.querySelector('#balHint').textContent=balMode==='current'
+      ?'سيُحسب رصيد أول المدة تلقائيًا = الرصيد الفعلي − صافي العمليات المسجلة ('+(moves>=0?'+':'−')+fmt(Math.abs(moves))+').'
+      :'رصيد المحفظة قبل أول عملية سجلتها هنا. غيّره يدويًا متى شئت.';
+    const after=openingOf()+moves;const a=s.querySelector('#after');a.textContent=fmt(after);a.className='num '+(after<0?'neg':'');
+  };
+  s.querySelectorAll('#bmode button').forEach(x=>x.onclick=()=>{const was=balMode;balMode=x.dataset.m;if(was!==balMode){const inp=s.querySelector('#opening');const v=+inp.value||0;inp.value=(balMode==='current'?v+moves:v-moves).toFixed(2)}sync()});
+  s.querySelector('#opening').oninput=sync;
+  s.querySelector('#cancel').onclick=()=>fromMgr?openManageSheet():closeSheet();
+  s.querySelector('#save').onclick=async()=>{
+    const name=s.querySelector('#name').value.trim();
+    if(!name){s.querySelector('#name').classList.add('bad');s.querySelector('#name').focus();toast('اكتب اسم المحفظة');return}
+    const doc={provider:s.querySelector('#provider').value,name,phone:s.querySelector('#phone').value.trim(),opening:openingOf(),updatedAt:new Date().toISOString()};
+    const btn=s.querySelector('#save');btn.disabled=true;
+    try{if(w)await store.doc('wallets/'+w.id).set({...doc,createdAt:w.createdAt||doc.updatedAt});else{doc.createdAt=doc.updatedAt;await store.collection('wallets').add(doc)}
+      toast(w?'تم حفظ المحفظة':'تمت إضافة المحفظة');if(fromMgr){setTimeout(openManageSheet,150)}else closeSheet()}catch(e){btn.disabled=false;fail(e)}
+  };
+  const del=s.querySelector('#del');if(del)del.onclick=()=>{
+    const body=cnt?'المحفظة عليها '+fmt0(cnt)+' عملية. اختر ماذا يحدث لها.':'لا توجد عمليات على هذه المحفظة.';
+    const d=sheet('<h3>حذف «'+esc(cur.name)+'»؟</h3><div class="sub">'+body+'</div><div class="actions" style="flex-direction:column">'+
+      (cnt?'<button class="primary" id="delAll" style="background:var(--bad);color:#fff">حذف المحفظة وكل عملياتها ('+fmt0(cnt)+')</button><button id="delOnly">حذف المحفظة فقط وإبقاء العمليات في السجل</button>':'<button class="primary" id="delOnly" style="background:var(--bad);color:#fff">نعم، احذف المحفظة</button>')+
+      '<button class="ghost" id="no">رجوع</button></div>');
+    d.querySelector('#no').onclick=()=>openWalletSheet(w,fromMgr);
+    const doDel=async(withTx)=>{d.querySelectorAll('button').forEach(x=>x.disabled=true);
+      try{if(withTx){for(const t of wt){await store.doc('txns/'+t.id).delete()}}await store.doc('wallets/'+w.id).delete();if(filterWallet===w.id)filterWallet=null;toast('تم حذف المحفظة');if(fromMgr)setTimeout(openManageSheet,150);else closeSheet()}catch(e){fail(e);openWalletSheet(w,fromMgr)}};
+    d.querySelector('#delOnly').onclick=()=>doDel(false);const da=d.querySelector('#delAll');if(da)da.onclick=()=>doDel(true);
+  };
+  sync();
+}
+function confirmSheet(title,body,onYes){
+  const s=sheet('<h3>'+esc(title)+'</h3><div class="sub">'+esc(body)+'</div><div class="actions"><button class="primary" id="yes" style="background:var(--bad);color:#fff">نعم، احذف</button><button class="ghost" id="no">رجوع</button></div>');
+  s.querySelector('#no').onclick=closeSheet;s.querySelector('#yes').onclick=onYes;
+}
+function fail(e){const c=e&&e.code;if(c==='invalid_argument'&&canWrite){canWrite=false;$('ro').hidden=false;render();toast('ليس لديك صلاحية التعديل')}else if(c==='quota_exceeded')toast('قاعدة البيانات ممتلئة، احذف عمليات قديمة');else toast('تعذّر الحفظ، حاول مرة أخرى');}
+
+/* ---------- wiring ---------- */
+$('fab').onclick=()=>openTxnSheet('out');
+$('manage').onclick=openManageSheet;
+$('range').onchange=render;
+let qt;$('q').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{q=e.target.value.trim();render()},120)};
+$('qclr').onclick=()=>{q='';$('q').value='';render()};
+document.querySelectorAll('#ins .seg button').forEach(x=>x.onclick=()=>{rankPeriod=x.dataset.p;render()});
+render();
+
+/* ---------- local on-device store (same API shape as the cloud db) ---------- */
+const LS='mahafez.db.v1';
+const data=(()=>{try{const d=JSON.parse(localStorage.getItem(LS));if(d&&d.wallets&&d.txns)return d}catch(e){}return {wallets:{},txns:{}}})();
+const subs={wallets:[],txns:[]};
+function persist(){try{localStorage.setItem(LS,JSON.stringify(data))}catch(e){toast('مساحة التخزين ممتلئة')}}
+function snapOf(col,q){let rows=Object.keys(data[col]).map(id=>({id,data:()=>data[col][id],exists:true}));
+  if(q&&q.f){const f=q.f,dir=q.d==='desc'?-1:1;rows.sort((a,b)=>{const x=a.data()[f],y=b.data()[f];return x<y?-dir:x>y?dir:0})}
+  if(q&&q.n)rows=rows.slice(0,q.n);return {docs:rows,size:rows.length,empty:!rows.length}}
+function notify(col){subs[col].forEach(s=>s.cb(snapOf(col,s.q)))}
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+const localDb={
+  collection(col){const mk=q=>({orderBy:(f,d)=>mk({...q,f,d}),limit:n=>mk({...q,n}),get:async()=>snapOf(col,q),
+    onSnapshot(cb){const s={cb,q};subs[col].push(s);setTimeout(()=>cb(snapOf(col,q)),0);return ()=>{subs[col]=subs[col].filter(x=>x!==s)}},
+    add:async d=>{const id=genId();data[col][id]=d;persist();notify(col);return {id}},
+    doc:id=>localDb.doc(col+'/'+(id||genId()))});return mk({})},
+  doc(path){const [col,id]=path.split('/');return {id,
+    set:async d=>{data[col][id]=d;persist();notify(col)},
+    update:async d=>{data[col][id]={...data[col][id],...d};persist();notify(col)},
+    delete:async()=>{delete data[col][id];persist();notify(col)},
+    get:async()=>({id,exists:!!data[col][id],data:()=>data[col][id]})}}
+};
+store=localDb;
+localDb.collection('wallets').orderBy('createdAt').onSnapshot(snap=>{wallets=snap.docs.map(d=>({id:d.id,...d.data()}));render()});
+localDb.collection('txns').orderBy('at','desc').onSnapshot(snap=>{txns=snap.docs.map(d=>({id:d.id,...d.data()}));render()});
+if(!Object.keys(data.wallets).length){ // first run: the three Egyptian wallets
+  const now=new Date().toISOString();
+  [['vodafone','فودافون كاش'],['etisalat','اتصالات كاش'],['ahly','الأهلي فون كاش']].forEach(([k,n],i)=>{data.wallets[k]={provider:k,name:n,phone:'',opening:0,createdAt:now.slice(0,-5)+i+'Z',updatedAt:now}});
+  persist();notify('wallets');
+}
+
+/* ---------- backup / restore ---------- */
+function backupJSON(){return JSON.stringify({app:'mahafez',version:1,exportedAt:new Date().toISOString(),wallets:data.wallets,txns:data.txns},null,1)}
+function backupName(){return 'mahafez-backup-'+today()+'.json'}
+function csvOf(){const rows=[['التاريخ','الوقت','المحفظة','النوع','الجهة','المبلغ','الرسوم','ملاحظة']];
+  txns.slice().sort((a,b)=>a.at<b.at?-1:1).forEach(t=>{const w=wallets.find(x=>x.id===t.walletId)||{};const d=new Date(t.at);
+    rows.push([t.day,p2(d.getHours())+':'+p2(d.getMinutes()),w.name||'',t.type==='in'?'إيداع':'سحب',t.party||'',t.amount,t.fee||0,t.note||''])});
+  return '\ufeff'+rows.map(r=>r.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(',')).join('\r\n')}
+function saveFile(name,text,mime){
+  if(window.Android&&Android.saveFile){const ok=Android.saveFile(name,text,mime);toast(ok?'تم الحفظ في مجلد التنزيلات: '+name:'تعذّر الحفظ');return}
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:mime}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
+function shareFile(name,text,mime){if(window.Android&&Android.shareFile){Android.shareFile(name,text,mime)}else saveFile(name,text,mime)}
+function restoreFrom(text){
+  let j;try{j=JSON.parse(text)}catch(e){toast('الملف ليس نسخة احتياطية صالحة');return}
+  if(!j||j.app!=='mahafez'||!j.wallets||!j.txns){toast('الملف ليس نسخة احتياطية من هذا البرنامج');return}
+  const nW=Object.keys(j.wallets).length,nT=Object.keys(j.txns).length;
+  const s=sheet('<h3>استعادة نسخة احتياطية</h3><div class="sub">الملف يحتوي على '+fmt0(nW)+' محفظة و'+fmt0(nT)+' عملية (صُدّر '+(j.exportedAt?new Date(j.exportedAt).toLocaleDateString('ar-EG'):'')+').</div>'+
+    '<div class="actions" style="flex-direction:column"><button class="primary" id="rep" style="background:var(--bad);color:#fff">استبدال كل البيانات الحالية بهذه النسخة</button><button id="merge">دمج: إضافة ما ليس موجودًا فقط</button><button class="ghost" id="no">إلغاء</button></div>');
+  s.querySelector('#no').onclick=closeSheet;
+  s.querySelector('#rep').onclick=()=>{data.wallets=j.wallets;data.txns=j.txns;persist();notify('wallets');notify('txns');closeSheet();toast('تمت الاستعادة')};
+  s.querySelector('#merge').onclick=()=>{let n=0;Object.entries(j.wallets).forEach(([k,v])=>{if(!data.wallets[k]){data.wallets[k]=v;n++}});Object.entries(j.txns).forEach(([k,v])=>{if(!data.txns[k]){data.txns[k]=v;n++}});persist();notify('wallets');notify('txns');closeSheet();toast('تمت إضافة '+fmt0(n)+' سجل')};
+}
+window.__restoreFromAndroid=restoreFrom;
+function openBackupSheet(){
+  const s=sheet('<h3>النسخ الاحتياطي</h3><div class="sub">بياناتك محفوظة على هذا الهاتف فقط. احفظ نسخة احتياطية بانتظام، خاصة قبل تغيير الهاتف أو حذف التطبيق.</div>'+
+    '<div class="stat"><div><div class="num">'+fmt0(wallets.length)+'</div><div class="lbl">محفظة</div></div><div><div class="num">'+fmt0(txns.length)+'</div><div class="lbl">عملية</div></div><div><div class="num">'+(localStorage.getItem('mahafez.lastBackup')?new Date(localStorage.getItem('mahafez.lastBackup')).toLocaleDateString('ar-EG'):'—')+'</div><div class="lbl">آخر نسخة</div></div></div>'+
+    '<div class="actions" style="flex-direction:column"><button class="primary" id="bk">⬇ حفظ نسخة احتياطية (JSON)</button><button id="sh">↗ مشاركة النسخة (واتساب، Drive…)</button><button id="csv">📄 تصدير السجل كملف Excel/CSV</button><button id="rs">⬆ استعادة من ملف</button><input type="file" id="rsf" accept=".json,application/json" hidden><button class="ghost" id="no">إغلاق</button></div>');
+  const mark=()=>{try{localStorage.setItem('mahafez.lastBackup',new Date().toISOString())}catch(e){}};
+  s.querySelector('#bk').onclick=()=>{saveFile(backupName(),backupJSON(),'application/json');mark()};
+  s.querySelector('#sh').onclick=()=>{shareFile(backupName(),backupJSON(),'application/json');mark()};
+  s.querySelector('#csv').onclick=()=>shareFile('mahafez-'+today()+'.csv',csvOf(),'text/csv');
+  s.querySelector('#rs').onclick=()=>s.querySelector('#rsf').click();
+  s.querySelector('#rsf').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>restoreFrom(r.result);r.readAsText(f)};
+  s.querySelector('#no').onclick=closeSheet;
+}
+$('backup').onclick=openBackupSheet;
+})();
+</script>
+<script>if(location.protocol.startsWith("http")&&"serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});</script>
+</body></html>

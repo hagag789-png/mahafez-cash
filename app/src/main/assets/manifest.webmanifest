@@ -1,0 +1,16 @@
+{
+  "name": "محافظي كاش",
+  "short_name": "محافظي كاش",
+  "description": "متابعة أرصدة فودافون كاش واتصالات كاش والأهلي فون كاش",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "dir": "rtl",
+  "lang": "ar",
+  "background_color": "#f6f4ef",
+  "theme_color": "#0f5e4a",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
